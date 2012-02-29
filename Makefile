@@ -1,22 +1,24 @@
-compiler=g++
-cargs= -c -O4 -Wall
-objects = filepktinterarrivaltime.o
-target = filepktinterarrivaltime
-targetdir = $(HOME)/bin
-version = 0.1
+# Time-stamp: <02/11/09 10:40:24 INGA>
+# File: Makefile
+# LinkAggregator
+#clients
+#g++ -c bitrate_modified_feb_2012.cpp 
+#g++ -o bitrate bitrate_modified_feb_2012.o
 
-all: $(objects)
-	$(compiler) -o $(target)-$(version) $(objects) -lcap_utils -lqd
+CARG=-c -O4 -Wall 
+OBJECTd= main.o
 
-filepktinterarrivaltime.o: filepktinterarrivaltime.cpp
-	$(compiler) $(cargs) filepktinterarrivaltime.cpp
+targetd= interarrivaltime
+
+
+
+
+all: $(OBJECTd)	
+	$(CXX) -o $(targetd) $(OBJECTd) -lqd -L/usr/local/lib -lcap_stream-07
 
 clean:
-	rm *.o
-	rm $(target)-$(version)
-install:
-	cp $(target)-$(version) $(targetdir)
-	ln -s $(targetdir)/$(target)-$(version) $(targetdir)/$(target)
+	rm -f *.o *.exe
+	rm -r $(OBJECTd) 
 
-uninstall:
-	rm $targetdir/$(target)
+main.o: main.cpp
+	$(CXX) $(CARG) main.cpp -lqd -L/usr/local/lib -lcap_stream-07
