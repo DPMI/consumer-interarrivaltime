@@ -74,20 +74,18 @@ int main (int argc, char **argv){
 		program_name = argv[0];
 	}
 
-	qd_real maxDiffTime, minDiffTime, diffTime,pkt1,pkt2; // when does the next sample occur,sample interval time,
+	struct filter filter;                 // filter to filter arguments
+	stream_t stream;                      // stream to read from
+	const char *iface = NULL;             // ethernet iface (used only when using ethernet multicast)
+	unsigned long int max_packets = 0;    // stop after N packets
 
-	//libcap .7
-	struct filter filter; // filter to filter arguments
-	stream_t stream; // stream to read from
-	const char *iface = NULL;
-	struct timeval tv = {2,0} ;
-	unsigned long int max_packets = 0;
-
+	/* Create filter from command line arguments */
 	if ( filter_from_argv(&argc,argv, &filter) != 0) {
 		fprintf(stderr, "%s: could not create filter", program_name);
 		return 1;
 	}
 
+	/* Parse command line arguments (filter arguments has been consumed) */
 	int op, option_index;
 	while ( (op = getopt_long(argc, argv, "hi:p:", long_options, &option_index)) != -1 ){
 		switch ( op ){
@@ -112,12 +110,14 @@ int main (int argc, char **argv){
 		}
 	}
 
+	/* No stream address was passed */
 	if ( optind == argc ){
+		fprintf(stderr, "No stream address was specified\n");
 		show_usage();
 		return 1;
 	}
 
-	/* open stream */
+	/* Open stream */
 	int ret;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0) {
 		return 1;
@@ -134,12 +134,9 @@ int main (int argc, char **argv){
 		return 1;
 	}
 
-	pkt1=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-	pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-	timeOffset=floor(pkt1);
-	pkt1-=timeOffset;
-	minDiffTime=10e6;
-	maxDiffTime=0.00001;
+	picotime time_offset = caphead->ts;
+	picotime last = {0,0};
+	char last_CI[8] = {0,};
 
 	while (keep_running){
 		switch ( (ret=stream_read(stream, &caphead, &filter, NULL)) ){
@@ -155,21 +152,27 @@ int main (int argc, char **argv){
 			break;
 		}
 
-		pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-		pkt2-=timeOffset;
-		diffTime=pkt2-pkt1;
-		if(diffTime<-1e-7) {
-			std::cerr << "Sanity problem; pkt2 arrived prior to pkt1, check timestamp:  "<< std::setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2) << std::endl;
+		picotime cur = timepico_sub(caphead->ts, time_offset);
+		picotime delta = timepico_sub(cur, last);
+
+		if ( (signed int)delta.tv_sec < 0 ){
+			fprintf(stderr, "%s: "
+			        "sanity problem; current packet arrived prior to previous\n"
+			        "\t current: CI=%.8s timestamp=%d.%012"PRIu64"\n"
+			        "\tprevious: CI=%.8s timestamp=%d.%012"PRIu64"\n"
+			        "Verify that stream is filtered to a single direction only.\n",
+			        program_name,
+			        caphead->nic, cur.tv_sec, cur.tv_psec,
+			        last_CI, last.tv_sec, last.tv_psec);
 		}
-		// cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
-		std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
-		pkt1=pkt2;
+
+		fprintf(stdout, "%d.%012"PRIu64" %d.%012"PRIu64"\n", cur.tv_sec, cur.tv_psec, delta.tv_sec, delta.tv_psec);
+		last = cur;
+		memcpy(last_CI, caphead->nic, 8);
 
 		if( max_packets > 0 && stat->read >= max_packets ) {
-			/* Read enough pkts lets break. */
-			break;
+			break; /* Read enough pkts lets break. */
 		}
-		ret = stream_read (stream,&caphead,&filter,&tv);
 	}
 
 	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets read.\n", program_name, stat->read);
