@@ -155,21 +155,21 @@ int main (int argc, char **argv){
 			break;
 		}
 
-			pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-			pkt2-=timeOffset;
-			diffTime=pkt2-pkt1;
-			if(diffTime<-1e-7) {
-				std::cerr << "Sanity problem; pkt2 arrived prior to pkt1, check timestamp:  "<< std::setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2) << std::endl;
-			}
-			// cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
-			std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
-			pkt1=pkt2;
+		pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
+		pkt2-=timeOffset;
+		diffTime=pkt2-pkt1;
+		if(diffTime<-1e-7) {
+			std::cerr << "Sanity problem; pkt2 arrived prior to pkt1, check timestamp:  "<< std::setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2) << std::endl;
+		}
+		// cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
+		std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
+		pkt1=pkt2;
 
-			if( max_packets > 0 && stat->read >= max_packets ) {
-				/* Read enough pkts lets break. */
-				break;
-			}
-			ret = stream_read (stream,&caphead,&filter,&tv);
+		if( max_packets > 0 && stat->read >= max_packets ) {
+			/* Read enough pkts lets break. */
+			break;
+		}
+		ret = stream_read (stream,&caphead,&filter,&tv);
 	}
 
 	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets read.\n", program_name, stat->read);
