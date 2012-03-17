@@ -47,10 +47,10 @@ static struct option long_options[]= {
 };
 
 static void show_usage(void){
-	printf("%s-" VERSION " (libcap_utils-" CAPUTILS_VERSION "\n", program_name);
+	printf("%s-" VERSION " (libcap_utils-" CAPUTILS_VERSION ")\n", program_name);
 	printf("(C) 2003 Anders Ekberg <anders.ekberg@bth.se>\n");
 	printf("(C) 2012 Vamsi Krishna Konakalla <xvk@bth.se>\n");
-	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n");
+	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n"
 	       "  -p, --pkts=INT       Number of pkts to show [default all]\n"
 	       "  -h, --help           This text\n"
