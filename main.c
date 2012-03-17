@@ -24,9 +24,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
-#include <iostream>
-#include <iomanip>
-#include <string>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -132,8 +129,8 @@ int main (int argc, char **argv){
 		return 1;
 	}
 
-	picotime time_offset = caphead->ts;
-	picotime last = {0,0};
+	timepico time_offset = caphead->ts;
+	timepico last = {0,0};
 	char last_CI[8] = {0,};
 
 	while (keep_running){
@@ -150,8 +147,8 @@ int main (int argc, char **argv){
 			break;
 		}
 
-		picotime cur = timepico_sub(caphead->ts, time_offset);
-		picotime delta = timepico_sub(cur, last);
+		timepico cur = timepico_sub(caphead->ts, time_offset);
+		timepico delta = timepico_sub(cur, last);
 
 		if ( (signed int)delta.tv_sec < 0 ){
 			fprintf(stderr, "%s: "
