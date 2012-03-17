@@ -76,23 +76,16 @@ int main (int argc, char **argv){
 	//libcap .7
 	struct filter filter; // filter to filter arguments
 	stream_t stream; // stream to read from
-	stream_addr_t src; // address of stream
 	//struct file_header head;
 	struct cap_header *caphead;// cap_head *caphead;
-	char *nic = 0;
+	char *iface = 0;
 	//FILE* infile;
-	char *filename;
 	struct timeval tv = {2,0} ;
 
-	int l;
-	//u_char* data;
-// filter from argv -1
-	if ((filter_from_argv(&argc,argv, &filter)) != 0) {
-		fprintf (stderr, "could not create filter ");
-		exit (0);
+	if ( filter_from_argv(&argc,argv, &filter) != 0) {
+		fprintf(stderr, "%s: could not create filter", program_name);
+		return 1;
 	}
-
-// stream address associator
 
 	op=0;
 	int ab,ac,ad,ae;
@@ -113,13 +106,6 @@ int main (int argc, char **argv){
 	op=ae;
 	pkts=-1;
 
-
-	if(argc<2)
-		{
-			printf("use %s -h or --help for help\n",argv[0]);
-			exit(0);
-		}
-
 	while ( (op = getopt_long(argc, argv, "hp", long_options, &option_index)) != -1 ){
 		switch ( op ){
 		case 0:   /* long opt */
@@ -139,43 +125,19 @@ int main (int argc, char **argv){
 		}
 	}
 
-	l=strlen(argv[argc-1]);
-	filename=(char*)malloc(l+1);
-	filename=argv[argc-1];
-
-// get an address for stream
-	int ret;
-	if ((argc - optind) > 0) {
-		ret = stream_addr_aton(&src, filename,STREAM_ADDR_GUESS,0);
-	}
-	else {
-		printf("must specify source \n");
-	}
-// open stream
-	if ((ret = stream_open (&stream, &src, nic,0)) != 0) {
-		fprintf (stderr, "stream_open () failed with code 0x%08X: %s",ret, caputils_error_string(ret));
-		exit (0);
+	if ( optind == argc ){
+		show_usage();
 		return 1;
 	}
 
-//
+	int ret;
 
-	struct file_version version;
-	const char* mampid = stream_get_mampid(stream);
-	const char* comment=  stream_get_comment(stream);
-	stream_get_version (stream, &version);
+	/* open stream */
+	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0) {
+		return 1;
+	}
 
-
-	//  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", stream->FH.comment_size, stream->FH.version.major, stream->FH.version.minor,stream->FH.mpid,stream->comment);
-	// disabled for security reasons
-	printf ("version.major = %d, version.minor = %d \n", version.major, version.minor);
-	printf("measurementpoint-id = %s \n", mampid != 0 ? mampid : "(unset)\n");
-	printf("comment = %s \n",comment ? comment : "(comment)\n");
-
-
-
-
-	//size=alloc_buffer(&infile, &data);
+	stream_print_info(stream, stderr);
 
 //Begin Packet processing
 
