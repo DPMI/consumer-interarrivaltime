@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <qd/qd_real.h>
 #include <errno.h>
 
 #define __STDC_FORMAT_MACROS
@@ -43,7 +42,6 @@
 // add a structure for the type:
 
 static const char* program_name;
-static qd_real timeOffset;
 static int keep_running = 1;
 
 static struct option long_options[]= {

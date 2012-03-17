@@ -1,6 +1,6 @@
 CFLAGS+=-Os -g -Wall $(shell pkg-config libcap_utils-0.7 --cflags)
 LDFLAGS+=
-LIBS=-lqd $(shell pkg-config libcap_utils-0.7 --libs)
+LIBS=$(shell pkg-config libcap_utils-0.7 --libs)
 OBJS=filepktinterarrivaltime.o
 TARGET=interarrivaltime
 
