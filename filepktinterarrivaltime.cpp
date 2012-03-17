@@ -47,8 +47,9 @@ static qd_real timeOffset;
 static int keep_running = 1;
 
 static struct option long_options[]= {
-	{"pkts", required_argument, 0, 'p'},
-	{"help", no_argument,       0, 'h'},
+	{"pkts",  required_argument, 0, 'p'},
+	{"iface", required_argument, 0, 'i'},
+	{"help",  no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
 
@@ -88,13 +89,17 @@ int main (int argc, char **argv){
 	}
 
 	int op, option_index;
-	while ( (op = getopt_long(argc, argv, "hp:", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hi:p:", long_options, &option_index)) != -1 ){
 		switch ( op ){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
 			break;
 
-		case 'p':
+		case 'i': /* --iface */
+			iface = optarg;
+			break;
+
+		case 'p': /* --pkts */
 			max_packets = atoi(optarg);
 			break;
 
@@ -112,9 +117,8 @@ int main (int argc, char **argv){
 		return 1;
 	}
 
-	int ret;
-
 	/* open stream */
+	int ret;
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0) {
 		return 1;
 	}
@@ -122,7 +126,6 @@ int main (int argc, char **argv){
 
 	/* show info about stream */
 	stream_print_info(stream, stderr);
-
 
 	/* read initial packet to initialize variables */
 	cap_head* caphead;
