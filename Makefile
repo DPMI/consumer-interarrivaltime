@@ -1,5 +1,6 @@
 CFLAGS+=-c -O4 -Wall $(shell pkg-config libcap_utils-0.7 --cflags)
-LDFLAGS+=-lqd $(shell pkg-config libcap_utils-0.7 --libs)
+LDFLAGS+=
+LIBS=-lqd $(shell pkg-config libcap_utils-0.7 --libs)
 OBJS=filepktinterarrivaltime.o
 TARGET=interarrivaltime
 
@@ -8,7 +9,7 @@ TARGET=interarrivaltime
 all: $(TARGET)
 
 $(TARGET): $(OBJS)	
-	$(CXX) $(LDFLAGS) $(OBJS) -o $(TARGET)
+	$(CXX) $(LDFLAGS) $(OBJS) $(LIBS) -o $(TARGET)
 
 clean:
 	rm -f *.o $(TARGET)
