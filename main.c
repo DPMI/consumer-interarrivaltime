@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #define VERSION "2"
 
@@ -57,6 +58,16 @@ static void show_usage(void){
 	       "  -h, --help           This text\n"
 	       "\n", program_name);
 	filter_from_argv_usage();
+}
+
+static void handle_sigint(int signum){
+	if ( keep_running == 0 ){
+		fprintf(stderr, "\r%s: got SIGINT again, aborting\n", program_name);
+		abort();
+	} else {
+		fprintf(stderr, "\r%s: got SIGINT, terminating\n", program_name);
+		keep_running = 0;
+	}
 }
 
 static void default_formatter(const timepico* time, const timepico* delta){
@@ -139,6 +150,9 @@ int main (int argc, char **argv){
 	/* show info about stream */
 	stream_print_info(stream, stderr);
 
+	/* setup signal handler for ctrl-c */
+	signal(SIGINT, handle_sigint);
+
 	/* read initial packet to initialize variables */
 	cap_head* caphead;
 	if ( (ret=stream_read (stream, &caphead, &filter, NULL)) != 0 ){
@@ -146,9 +160,11 @@ int main (int argc, char **argv){
 		return 1;
 	}
 
-	timepico time_offset = caphead->ts;
-	timepico last = {0,0};
+	timepico time_offset = {caphead->ts.tv_sec, 0};
+	timepico last = {0, caphead->ts.tv_psec};
 	char last_CI[8] = {0,};
+
+	fprintf(stderr, "%s: Using time offset %d.%012"PRIu64".\n", program_name, time_offset.tv_sec, time_offset.tv_psec);
 
 	while (keep_running){
 		/* read next packet */
@@ -156,7 +172,7 @@ int main (int argc, char **argv){
 		case -1:     /* eof */
 			keep_running = 0;
 		case EAGAIN: /* timeout */
-		case EINTR:  /* call interupted (by a signal for instance) */
+		case EINTR:  /* call interrupted (by a signal for instance) */
 			continue;
 		case 0:      /* a packet was read */
 			break;
