@@ -20,23 +20,15 @@
 #include "caputils/filter.h"
 
 #include <stdio.h>
-#include <net/if_arp.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <errno.h>
-
-#define __STDC_FORMAT_MACROS
-#include <stdint.h>
 #include <inttypes.h>
 
 #define VERSION "2"
-// To add a new network type:
-// add a define for the ethernet type.
-// add a structure for the type:
 
 static const char* program_name;
 static int keep_running = 1;
@@ -134,15 +126,16 @@ int main (int argc, char **argv){
 	char last_CI[8] = {0,};
 
 	while (keep_running){
+		/* read next packet */
 		switch ( (ret=stream_read(stream, &caphead, &filter, NULL)) ){
-		case -1: /* eof */
+		case -1:     /* eof */
 			keep_running = 0;
-		case EAGAIN:
-		case EINTR:
+		case EAGAIN: /* timeout */
+		case EINTR:  /* call interupted (by a signal for instance) */
 			continue;
-		case 0:
+		case 0:      /* a packet was read */
 			break;
-		default:
+		default:     /* an error has occured */
 			fprintf(stderr, "%s: stream_read() failed: %s\n", program_name, caputils_error_string(ret));
 			break;
 		}
@@ -172,6 +165,7 @@ int main (int argc, char **argv){
 
 	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets read.\n", program_name, stat->read);
 	stream_close(stream);
+	filter_close(&filter);
 
 	return 0;
 }
