@@ -31,6 +31,11 @@
 #include <string.h>
 #include <math.h>
 #include <qd/qd_real.h>
+#include <errno.h>
+
+#define __STDC_FORMAT_MACROS
+#include <stdint.h>
+#include <inttypes.h>
 
 #define VERSION "2"
 // To add a new network type:
@@ -39,6 +44,7 @@
 
 static const char* program_name;
 static qd_real timeOffset;
+static int keep_running = 1;
 
 static struct option long_options[]= {
 	{"pkts", required_argument, 0, 'p'},
@@ -77,7 +83,6 @@ int main (int argc, char **argv){
 	struct filter filter; // filter to filter arguments
 	stream_t stream; // stream to read from
 	//struct file_header head;
-	struct cap_header *caphead;// cap_head *caphead;
 	char *iface = 0;
 	//FILE* infile;
 	struct timeval tv = {2,0} ;
@@ -90,8 +95,7 @@ int main (int argc, char **argv){
 	op=0;
 	int ab,ac,ad,ae;
 
-	double pkts;
-	//myfilter.index=0;
+	unsigned long int max_packets = 0;
 	ab=optind;
 	ac=opterr;
 	ad=optopt;
@@ -104,7 +108,6 @@ int main (int argc, char **argv){
 	opterr=ac;
 	optopt=ad;
 	op=ae;
-	pkts=-1;
 
 	while ( (op = getopt_long(argc, argv, "hp:", long_options, &option_index)) != -1 ){
 		switch ( op ){
@@ -113,7 +116,7 @@ int main (int argc, char **argv){
 			break;
 
 		case 'p':
-			pkts = atoi(optarg);
+			max_packets = atoi(optarg);
 			break;
 
 		case 'h':
@@ -136,16 +139,19 @@ int main (int argc, char **argv){
 	if ( (ret=stream_from_getopt(&stream, argv, optind, argc, iface, "-", program_name, 0)) != 0) {
 		return 1;
 	}
+	const struct stream_stat* stat  = stream_get_stat(stream);
 
+	/* show info about stream */
 	stream_print_info(stream, stderr);
 
-//Begin Packet processing
 
-//  stream read..
-	ret = stream_read (stream,&caphead,&filter,&tv);
+	/* read initial packet to initialize variables */
+	cap_head* caphead;
+	if ( (ret=stream_read (stream, &caphead, &filter, NULL)) != 0 ){
+		fprintf(stderr, "%s: stream_read() failed: %s\n", program_name, caputils_error_string(ret));
+		return 1;
+	}
 
-	//read_filter_post(&infile, data, size, myfilter);
-	//caphead=(cap_head*)data;
 	pkt1=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
 	pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
 	timeOffset=floor(pkt1);
@@ -153,11 +159,20 @@ int main (int argc, char **argv){
 	minDiffTime=10e6;
 	maxDiffTime=0.00001;
 
-	double readPkts=2;
-	ret = stream_read (stream,&caphead,&filter,&tv);
-	while (ret == 0)// while (feof(infile)==0 )
-		{
-			//caphead=(cap_head*)data;
+	while (keep_running){
+		switch ( (ret=stream_read(stream, &caphead, &filter, NULL)) ){
+		case -1: /* eof */
+			keep_running = 0;
+		case EAGAIN:
+		case EINTR:
+			continue;
+		case 0:
+			break;
+		default:
+			fprintf(stderr, "%s: stream_read() failed: %s\n", program_name, caputils_error_string(ret));
+			break;
+		}
+
 			pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
 			pkt2-=timeOffset;
 			diffTime=pkt2-pkt1;
@@ -168,21 +183,15 @@ int main (int argc, char **argv){
 			std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
 			pkt1=pkt2;
 
-			if(pkts>0 && (readPkts+1)>pkts) {
+			if( max_packets > 0 && stat->read >= max_packets ) {
 				/* Read enough pkts lets break. */
 				break;
 			}
 			ret = stream_read (stream,&caphead,&filter,&tv);
-			readPkts++;
-		}
+	}
 
-//End Packet processing
-
-
-
-	// dealloc_buffer(&data);
-	//close_cap_file(&infile);
-
+	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets read.\n", program_name, stat->read);
 	stream_close(stream);
+
 	return 0;
 }
