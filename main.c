@@ -30,13 +30,18 @@
 
 #define VERSION "2"
 
-static const char* program_name;
+typedef void (*format_func)(const timepico* time, const timepico* delta);
+static format_func formatter = NULL;         // output formatter
+static const char* program_name;             // this programs name
+static const char *iface = NULL;             // ethernet iface (used only when using ethernet multicast)
+static unsigned long int max_packets = 0;    // stop after N packets
 static int keep_running = 1;
 
 static struct option long_options[]= {
-	{"pkts",  required_argument, 0, 'p'},
-	{"iface", required_argument, 0, 'i'},
-	{"help",  no_argument,       0, 'h'},
+	{"pkts",   required_argument, 0, 'p'},
+	{"iface",  required_argument, 0, 'i'},
+	{"format", required_argument, 0, 'f'},
+	{"help",   no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
 
@@ -47,9 +52,19 @@ static void show_usage(void){
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n"
 	       "  -p, --pkts=INT       Number of pkts to show [default all]\n"
+	       "  -i, --iface=IFACE    Use ethernet interface IFACE\n"
+	       "  -f, --format=FORMAT  Set output FORMAT. Valid format is csv and default.\n"
 	       "  -h, --help           This text\n"
 	       "\n", program_name);
 	filter_from_argv_usage();
+}
+
+static void default_formatter(const timepico* time, const timepico* delta){
+	fprintf(stdout, "%d.%012"PRIu64" %d.%012"PRIu64"\n", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);
+}
+
+static void csv_formatter(const timepico* time, const timepico* delta){
+	fprintf(stdout, "%d.%012"PRIu64";%d.%012"PRIu64"\n", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);
 }
 
 int main (int argc, char **argv){
@@ -63,8 +78,7 @@ int main (int argc, char **argv){
 
 	struct filter filter;                 // filter to filter arguments
 	stream_t stream;                      // stream to read from
-	const char *iface = NULL;             // ethernet iface (used only when using ethernet multicast)
-	unsigned long int max_packets = 0;    // stop after N packets
+	formatter = default_formatter;
 
 	/* Create filter from command line arguments */
 	if ( filter_from_argv(&argc,argv, &filter) != 0) {
@@ -86,6 +100,17 @@ int main (int argc, char **argv){
 
 		case 'p': /* --pkts */
 			max_packets = atoi(optarg);
+			break;
+
+		case 'f': /* --format */
+			if ( strcasecmp(optarg, "csv") == 0 ){
+				formatter = csv_formatter;
+			} else if ( strcasecmp(optarg, "default") == 0 ){
+				formatter = default_formatter;
+			} else {
+				fprintf(stderr, "%s: unknown output format `%s'\n", program_name, optarg);
+				return 1;
+			}
 			break;
 
 		case 'h':
@@ -154,7 +179,7 @@ int main (int argc, char **argv){
 			        last_CI, last.tv_sec, last.tv_psec);
 		}
 
-		fprintf(stdout, "%d.%012"PRIu64" %d.%012"PRIu64"\n", cur.tv_sec, cur.tv_psec, delta.tv_sec, delta.tv_psec);
+		formatter(&cur, &delta);
 		last = cur;
 		memcpy(last_CI, caphead->nic, 8);
 
