@@ -4,7 +4,7 @@
     begin                : Fri Jan 31 2003
     copyright            : (C) 2003 by Anders Ekberg
     email                : anders.ekberg@bth.se
- ***************************************************************************/
+***************************************************************************/
 
 /***************************************************************************
  *                                                                         *
@@ -67,166 +67,166 @@ int main (int argc, char **argv){
 		program_name = argv[0];
 	}
 
-  qd_real maxDiffTime, minDiffTime, diffTime,pkt1,pkt2; // when does the next sample occur,sample interval time,
+	qd_real maxDiffTime, minDiffTime, diffTime,pkt1,pkt2; // when does the next sample occur,sample interval time,
 
-  extern int optind, opterr, optopt;
-  register int op;
-  int this_option_optind;
-  int option_index;
+	extern int optind, opterr, optopt;
+	register int op;
+	int this_option_optind;
+	int option_index;
 
- //libcap .7
-	 struct filter filter; // filter to filter arguments
-  stream_t stream; // stream to read from
-  stream_addr_t src; // address of stream
-  //struct file_header head;
-  struct cap_header *caphead;// cap_head *caphead;
-  char *nic = 0;
-  //FILE* infile;
-  char *filename;
-  struct timeval tv = {2,0} ;
+	//libcap .7
+	struct filter filter; // filter to filter arguments
+	stream_t stream; // stream to read from
+	stream_addr_t src; // address of stream
+	//struct file_header head;
+	struct cap_header *caphead;// cap_head *caphead;
+	char *nic = 0;
+	//FILE* infile;
+	char *filename;
+	struct timeval tv = {2,0} ;
 
-  int l;
-  //u_char* data;
+	int l;
+	//u_char* data;
 // filter from argv -1
-   if ((filter_from_argv(&argc,argv, &filter)) != 0) {
-    fprintf (stderr, "could not create filter ");
-    exit (0);
-  }
+	if ((filter_from_argv(&argc,argv, &filter)) != 0) {
+		fprintf (stderr, "could not create filter ");
+		exit (0);
+	}
 
 // stream address associator
 
-  op=0;
-  int ab,ac,ad,ae;
+	op=0;
+	int ab,ac,ad,ae;
 
-  double pkts;
-  //myfilter.index=0;
-  ab=optind;
-  ac=opterr;
-  ad=optopt;
-  ae=op;
-
-
-  //myfilter=createfilter(argc,argv);
-
-  optind=ab;
-  opterr=ac;
-  optopt=ad;
-  op=ae;
-  pkts=-1;
+	double pkts;
+	//myfilter.index=0;
+	ab=optind;
+	ac=opterr;
+	ad=optopt;
+	ae=op;
 
 
-if(argc<2)
-	{
-				printf("use %s -h or --help for help\n",argv[0]);
-				exit(0);
+	//myfilter=createfilter(argc,argv);
+
+	optind=ab;
+	opterr=ac;
+	optopt=ad;
+	op=ae;
+	pkts=-1;
+
+
+	if(argc<2)
+		{
+			printf("use %s -h or --help for help\n",argv[0]);
+			exit(0);
+		}
+
+	while (1) {
+		this_option_optind = optind ? optind : 1;
+		option_index = 0;
+
+		op = getopt_long  (argc, argv, "hp:",
+		                   long_options, &option_index);
+		if (op == -1)
+			break;
+
+		switch (op)
+			{
+			case 'p':
+				pkts=atoi(optarg);
+				break;
+			case 'h':
+				show_usage();
+				return 0;
+				break;
+
+			default:
+				printf ("?? getopt returned character code 0%o ??\n", op);
+			}
 	}
 
- while (1) {
-        this_option_optind = optind ? optind : 1;
-        option_index = 0;
-
-        op = getopt_long  (argc, argv, "hp:",
-                 long_options, &option_index);
-        if (op == -1)
-            break;
-
-        switch (op)
-        {
-          case 'p':
-              pkts=atoi(optarg);
-            break;
-          case 'h':
-	          show_usage();
-	          return 0;
-            break;
-
-        default:
-            printf ("?? getopt returned character code 0%o ??\n", op);
-        }
-    }
-
-  l=strlen(argv[argc-1]);
-  filename=(char*)malloc(l+1);
-  filename=argv[argc-1];
+	l=strlen(argv[argc-1]);
+	filename=(char*)malloc(l+1);
+	filename=argv[argc-1];
 
 // get an address for stream
-int ret;
-  if ((argc - optind) > 0) {
-    ret = stream_addr_aton(&src, filename,STREAM_ADDR_GUESS,0);
-  }
-  else {
-    printf("must specify source \n");
-  }
+	int ret;
+	if ((argc - optind) > 0) {
+		ret = stream_addr_aton(&src, filename,STREAM_ADDR_GUESS,0);
+	}
+	else {
+		printf("must specify source \n");
+	}
 // open stream
-  if ((ret = stream_open (&stream, &src, nic,0)) != 0) {
-    fprintf (stderr, "stream_open () failed with code 0x%08X: %s",ret, caputils_error_string(ret));
-    exit (0);
-    return 1;
-  }
+	if ((ret = stream_open (&stream, &src, nic,0)) != 0) {
+		fprintf (stderr, "stream_open () failed with code 0x%08X: %s",ret, caputils_error_string(ret));
+		exit (0);
+		return 1;
+	}
 
 //
 
-  struct file_version version;
- const char* mampid = stream_get_mampid(stream);
- const char* comment=  stream_get_comment(stream);
- stream_get_version (stream, &version);
+	struct file_version version;
+	const char* mampid = stream_get_mampid(stream);
+	const char* comment=  stream_get_comment(stream);
+	stream_get_version (stream, &version);
 
 
-  //  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", stream->FH.comment_size, stream->FH.version.major, stream->FH.version.minor,stream->FH.mpid,stream->comment);
-  // disabled for security reasons
-printf ("version.major = %d, version.minor = %d \n", version.major, version.minor);
-printf("measurementpoint-id = %s \n", mampid != 0 ? mampid : "(unset)\n");
-printf("comment = %s \n",comment ? comment : "(comment)\n");
+	//  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", stream->FH.comment_size, stream->FH.version.major, stream->FH.version.minor,stream->FH.mpid,stream->comment);
+	// disabled for security reasons
+	printf ("version.major = %d, version.minor = %d \n", version.major, version.minor);
+	printf("measurementpoint-id = %s \n", mampid != 0 ? mampid : "(unset)\n");
+	printf("comment = %s \n",comment ? comment : "(comment)\n");
 
 
 
 
-  //size=alloc_buffer(&infile, &data);
+	//size=alloc_buffer(&infile, &data);
 
 //Begin Packet processing
 
 //  stream read..
-   ret = stream_read (stream,&caphead,&filter,&tv);
+	ret = stream_read (stream,&caphead,&filter,&tv);
 
-  //read_filter_post(&infile, data, size, myfilter);
-  //caphead=(cap_head*)data;
-  pkt1=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-  pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-  timeOffset=floor(pkt1);
-  pkt1-=timeOffset;
-  minDiffTime=10e6;
-  maxDiffTime=0.00001;
+	//read_filter_post(&infile, data, size, myfilter);
+	//caphead=(cap_head*)data;
+	pkt1=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
+	pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
+	timeOffset=floor(pkt1);
+	pkt1-=timeOffset;
+	minDiffTime=10e6;
+	maxDiffTime=0.00001;
 
-  double readPkts=2;
-   ret = stream_read (stream,&caphead,&filter,&tv);
- while (ret == 0)// while (feof(infile)==0 )
-  {
-    //caphead=(cap_head*)data;
-    pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
-    pkt2-=timeOffset;
-    diffTime=pkt2-pkt1;
-    if(diffTime<-1e-7) {
-	    std::cerr << "Sanity problem; pkt2 arrived prior to pkt1, check timestamp:  "<< std::setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2) << std::endl;
-    }
- // cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
-    std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
-    pkt1=pkt2;
+	double readPkts=2;
+	ret = stream_read (stream,&caphead,&filter,&tv);
+	while (ret == 0)// while (feof(infile)==0 )
+		{
+			//caphead=(cap_head*)data;
+			pkt2=(qd_real)(double)caphead->ts.tv_sec+(qd_real)(double)(caphead->ts.tv_psec/PICODIVIDER);
+			pkt2-=timeOffset;
+			diffTime=pkt2-pkt1;
+			if(diffTime<-1e-7) {
+				std::cerr << "Sanity problem; pkt2 arrived prior to pkt1, check timestamp:  "<< std::setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2) << std::endl;
+			}
+			// cout << setiosflags(ios::fixed) << setprecision(6) << to_double(lastEvent+timeOffset)<< ":" << sampleValue << endl;
+			std::cout << setiosflags(std::ios::fixed) << std::setprecision(12)<< to_double(pkt2)<<"\t"<<to_double(diffTime) << std::endl;
+			pkt1=pkt2;
 
-    if(pkts>0 && (readPkts+1)>pkts) {
-      /* Read enough pkts lets break. */
-      break;
-    }
-     ret = stream_read (stream,&caphead,&filter,&tv);
-    readPkts++;
-  }
+			if(pkts>0 && (readPkts+1)>pkts) {
+				/* Read enough pkts lets break. */
+				break;
+			}
+			ret = stream_read (stream,&caphead,&filter,&tv);
+			readPkts++;
+		}
 
 //End Packet processing
 
 
 
- // dealloc_buffer(&data);
-  //close_cap_file(&infile);
+	// dealloc_buffer(&data);
+	//close_cap_file(&infile);
 
- stream_close(stream);
-  return 0;
+	stream_close(stream);
+	return 0;
 }
