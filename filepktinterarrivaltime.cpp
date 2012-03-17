@@ -75,40 +75,19 @@ int main (int argc, char **argv){
 
 	qd_real maxDiffTime, minDiffTime, diffTime,pkt1,pkt2; // when does the next sample occur,sample interval time,
 
-	extern int optind, opterr, optopt;
-	register int op;
-	int option_index;
-
 	//libcap .7
 	struct filter filter; // filter to filter arguments
 	stream_t stream; // stream to read from
-	//struct file_header head;
-	char *iface = 0;
-	//FILE* infile;
+	const char *iface = NULL;
 	struct timeval tv = {2,0} ;
+	unsigned long int max_packets = 0;
 
 	if ( filter_from_argv(&argc,argv, &filter) != 0) {
 		fprintf(stderr, "%s: could not create filter", program_name);
 		return 1;
 	}
 
-	op=0;
-	int ab,ac,ad,ae;
-
-	unsigned long int max_packets = 0;
-	ab=optind;
-	ac=opterr;
-	ad=optopt;
-	ae=op;
-
-
-	//myfilter=createfilter(argc,argv);
-
-	optind=ab;
-	opterr=ac;
-	optopt=ad;
-	op=ae;
-
+	int op, option_index;
 	while ( (op = getopt_long(argc, argv, "hp:", long_options, &option_index)) != -1 ){
 		switch ( op ){
 		case 0:   /* long opt */
