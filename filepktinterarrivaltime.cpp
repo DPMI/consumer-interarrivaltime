@@ -71,7 +71,6 @@ int main (int argc, char **argv){
 
 	extern int optind, opterr, optopt;
 	register int op;
-	int this_option_optind;
 	int option_index;
 
 	//libcap .7
@@ -121,28 +120,23 @@ int main (int argc, char **argv){
 			exit(0);
 		}
 
-	while (1) {
-		this_option_optind = optind ? optind : 1;
-		option_index = 0;
-
-		op = getopt_long  (argc, argv, "hp:",
-		                   long_options, &option_index);
-		if (op == -1)
+	while ( (op = getopt_long(argc, argv, "hp", long_options, &option_index)) != -1 ){
+		switch ( op ){
+		case 0:   /* long opt */
+		case '?': /* unknown opt */
 			break;
 
-		switch (op)
-			{
-			case 'p':
-				pkts=atoi(optarg);
-				break;
-			case 'h':
-				show_usage();
-				return 0;
-				break;
+		case 'p':
+			pkts = atoi(optarg);
+			break;
 
-			default:
-				printf ("?? getopt returned character code 0%o ??\n", op);
-			}
+		case 'h':
+			show_usage();
+			return 0;
+
+		default:
+			printf ("?? getopt returned character code 0%o ??\n", op);
+		}
 	}
 
 	l=strlen(argv[argc-1]);
