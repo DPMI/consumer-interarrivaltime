@@ -183,12 +183,13 @@ int main (int argc, char **argv){
 		last = cur;
 		memcpy(last_CI, caphead->nic, 8);
 
-		if( max_packets > 0 && stat->read >= max_packets ) {
+		if( max_packets > 0 && stat->matched >= max_packets ) {
 			break; /* Read enough pkts lets break. */
 		}
 	}
 
 	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets read.\n", program_name, stat->read);
+	fprintf(stderr, "%s: There was a total of %'"PRIu64" packets matching filter.\n", program_name, stat->matched);
 	stream_close(stream);
 	filter_close(&filter);
 
