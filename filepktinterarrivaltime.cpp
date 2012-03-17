@@ -106,7 +106,7 @@ int main (int argc, char **argv){
 	op=ae;
 	pkts=-1;
 
-	while ( (op = getopt_long(argc, argv, "hp", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hp:", long_options, &option_index)) != -1 ){
 		switch ( op ){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
