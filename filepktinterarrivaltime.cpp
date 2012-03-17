@@ -75,8 +75,8 @@ int main (int argc, char **argv){
   int option_index;
 
  //libcap .7
-	 struct filter myFilter; // filter to filter arguments
-  stream_t inStream; // stream to read from
+	 struct filter filter; // filter to filter arguments
+  stream_t stream; // stream to read from
   stream_addr_t src; // address of stream
   //struct file_header head;
   struct cap_header *caphead;// cap_head *caphead;
@@ -88,7 +88,7 @@ int main (int argc, char **argv){
   int l;
   //u_char* data;
 // filter from argv -1
-   if ((filter_from_argv(&argc,argv, &myFilter)) != 0) {
+   if ((filter_from_argv(&argc,argv, &filter)) != 0) {
     fprintf (stderr, "could not create filter ");
     exit (0);
   }
@@ -158,7 +158,7 @@ int ret;
     printf("must specify source \n");
   }
 // open stream
-  if ((ret = stream_open (&inStream, &src, nic,0)) != 0) {
+  if ((ret = stream_open (&stream, &src, nic,0)) != 0) {
     fprintf (stderr, "stream_open () failed with code 0x%08X: %s",ret, caputils_error_string(ret));
     exit (0);
     return 1;
@@ -167,12 +167,12 @@ int ret;
 //
 
   struct file_version version;
- const char* mampid = stream_get_mampid(inStream);
- const char* comment=  stream_get_comment(inStream);
- stream_get_version (inStream, &version);
+ const char* mampid = stream_get_mampid(stream);
+ const char* comment=  stream_get_comment(stream);
+ stream_get_version (stream, &version);
 
 
-  //  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", inStream->FH.comment_size, inStream->FH.version.major, inStream->FH.version.minor,inStream->FH.mpid,inStream->comment);
+  //  printf ("comment size : %d, ver = %d.%d, MPid = %s  \n comments is %s \n", stream->FH.comment_size, stream->FH.version.major, stream->FH.version.minor,stream->FH.mpid,stream->comment);
   // disabled for security reasons
 printf ("version.major = %d, version.minor = %d \n", version.major, version.minor);
 printf("measurementpoint-id = %s \n", mampid != 0 ? mampid : "(unset)\n");
@@ -186,7 +186,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
 //Begin Packet processing
 
 //  stream read..
-   ret = stream_read (inStream,&caphead,&myFilter,&tv);
+   ret = stream_read (stream,&caphead,&filter,&tv);
 
   //read_filter_post(&infile, data, size, myfilter);
   //caphead=(cap_head*)data;
@@ -198,7 +198,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
   maxDiffTime=0.00001;
 
   double readPkts=2;
-   ret = stream_read (inStream,&caphead,&myFilter,&tv);
+   ret = stream_read (stream,&caphead,&filter,&tv);
  while (ret == 0)// while (feof(infile)==0 )
   {
     //caphead=(cap_head*)data;
@@ -216,7 +216,7 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
       /* Read enough pkts lets break. */
       break;
     }
-     ret = stream_read (inStream,&caphead,&myFilter,&tv);
+     ret = stream_read (stream,&caphead,&filter,&tv);
     readPkts++;
   }
 
@@ -227,6 +227,6 @@ printf("comment = %s \n",comment ? comment : "(comment)\n");
  // dealloc_buffer(&data);
   //close_cap_file(&infile);
 
- stream_close(inStream);
+ stream_close(stream);
   return 0;
 }
