@@ -15,9 +15,9 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "caputils/caputils.h"
-#include "caputils/stream.h"
-#include "caputils/filter.h"
+#include <caputils/caputils.h>
+#include <caputils/stream.h>
+#include <caputils/filter.h>
 
 #include <stdio.h>
 #include <unistd.h>
