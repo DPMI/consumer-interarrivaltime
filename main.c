@@ -63,7 +63,10 @@ static void show_usage(void){
 	       "      --no-header      Don't write format header.\n"
 	       "      --no-offset      Don't use a time offset.\n"
 	       "  -h, --help           This text\n"
-	       "\n", program_name);
+	       "\n"
+	       "Recommended conserver usage:\n"
+	       "%s -c | conserver -j1 -n NAME\n"
+	       "\n", program_name, program_name);
 	filter_from_argv_usage();
 }
 
