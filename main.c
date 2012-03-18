@@ -36,12 +36,16 @@ static format_func formatter = NULL;         // output formatter
 static const char* program_name;             // this programs name
 static const char *iface = NULL;             // ethernet iface (used only when using ethernet multicast)
 static unsigned long int max_packets = 0;    // stop after N packets
+static int noheader = 0;                     // If non-zero no format header is written
+static int nooffset = 0;                     // If non-zero no time offset it used
 static int keep_running = 1;
 
 static struct option long_options[]= {
 	{"pkts",   required_argument, 0, 'p'},
 	{"iface",  required_argument, 0, 'i'},
 	{"format", required_argument, 0, 'f'},
+	{"no-header", no_argument,    0, '0'},
+	{"no-offset", no_argument,    0, 'x'},
 	{"help",   no_argument,       0, 'h'},
 	{0, 0, 0, 0} /* sentinel */
 };
@@ -55,6 +59,9 @@ static void show_usage(void){
 	       "  -p, --pkts=INT       Number of pkts to show [default all]\n"
 	       "  -i, --iface=IFACE    Use ethernet interface IFACE\n"
 	       "  -f, --format=FORMAT  Set output FORMAT. Valid format is csv and default.\n"
+	       "  -c                   Short for --format=csv\n"
+	       "      --no-header      Don't write format header.\n"
+	       "      --no-offset      Don't use a time offset.\n"
 	       "  -h, --help           This text\n"
 	       "\n", program_name);
 	filter_from_argv_usage();
@@ -99,7 +106,7 @@ int main (int argc, char **argv){
 
 	/* Parse command line arguments (filter arguments has been consumed) */
 	int op, option_index;
-	while ( (op = getopt_long(argc, argv, "hi:p:", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, "hi:p:c", long_options, &option_index)) != -1 ){
 		switch ( op ){
 		case 0:   /* long opt */
 		case '?': /* unknown opt */
@@ -122,6 +129,18 @@ int main (int argc, char **argv){
 				fprintf(stderr, "%s: unknown output format `%s'\n", program_name, optarg);
 				return 1;
 			}
+			break;
+
+		case 'c': /* --format=csv */
+			formatter = csv_formatter;
+			break;
+
+		case '0': /* --no-header */
+			noheader = 1;
+			break;
+
+		case 'x': /* --no-offset */
+			nooffset = 1;
 			break;
 
 		case 'h':
@@ -164,7 +183,20 @@ int main (int argc, char **argv){
 	timepico last = {0, caphead->ts.tv_psec};
 	char last_CI[8] = {0,};
 
+	if ( nooffset ){
+		time_offset.tv_sec = 0;
+		last.tv_sec = caphead->ts.tv_sec;
+	}
+
 	fprintf(stderr, "%s: Using time offset %d.%012"PRIu64".\n", program_name, time_offset.tv_sec, time_offset.tv_psec);
+
+	/* write header */
+	if ( !noheader ){
+		if ( formatter == csv_formatter ){
+			fprintf(stdout, "\"timestamp\";\"interarrivaltime\"\n"); /* column names */
+		}
+	}
+
 
 	while (keep_running){
 		/* read next packet */
