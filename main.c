@@ -200,7 +200,6 @@ int main (int argc, char **argv){
 		}
 	}
 
-
 	while (keep_running){
 		/* read next packet */
 		switch ( (ret=stream_read(stream, &caphead, &filter, NULL)) ){
