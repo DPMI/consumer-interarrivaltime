@@ -1,24 +1,27 @@
-# Time-stamp: <02/11/09 10:40:24 INGA>
-# File: Makefile
-# LinkAggregator
-#clients
-#g++ -c bitrate_modified_feb_2012.cpp 
-#g++ -o bitrate bitrate_modified_feb_2012.o
+CFLAGS+=-Os -g -Wall $(shell pkg-config libcap_utils-0.7 --cflags)
+LDFLAGS+=
+LIBS=$(shell pkg-config libcap_utils-0.7 --libs)
+OBJS=main.o
+TARGET=capinterarrivaltime
+PREFIX=/usr/local
+DESTDIR=
 
-CARG=-c -O4 -Wall 
-OBJECTd= main.o
+.PHONY: clean install
 
-targetd= interarrivaltime
+all: $(TARGET)
 
-
-
-
-all: $(OBJECTd)	
-	$(CXX) -o $(targetd) $(OBJECTd) -lqd -L/usr/local/lib -lcap_stream-07
+$(TARGET): $(OBJS)	
+	$(CC) $(LDFLAGS) $(OBJS) $(LIBS) -o $(TARGET)
 
 clean:
-	rm -f *.o *.exe
-	rm -r $(OBJECTd) 
+	rm -f *.o $(TARGET)
 
-main.o: main.cpp
-	$(CXX) $(CARG) main.cpp -lqd -L/usr/local/lib -lcap_stream-07
+install:
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install $(TARGET) $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+
+uninstall:
+	rm $(DESTDIR)$(PREFIX)/bin/$(TARGET)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
