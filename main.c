@@ -18,6 +18,9 @@
 #include <caputils/caputils.h>
 #include <caputils/stream.h>
 #include <caputils/filter.h>
+#include <caputils/utils.h>
+#include <caputils/log.h>
+#include <caputils/packet.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -39,7 +42,10 @@ static unsigned long int max_packets = 0;    // stop after N packets
 static int noheader = 0;                     // If non-zero no format header is written
 static int nooffset = 0;                     // If non-zero no time offset it used
 static int keep_running = 1;
+static int showpacket=0;
+static unsigned int flags = FORMAT_REL_TIMESTAMP;
 
+static const char* shortopts = "hi:p:cS" "i:p:cSdDar1234xHh";
 static struct option long_options[]= {
 	{"pkts",   required_argument, 0, 'p'},
 	{"iface",  required_argument, 0, 'i'},
@@ -47,6 +53,16 @@ static struct option long_options[]= {
 	{"no-header", no_argument,    0, '0'},
 	{"no-offset", no_argument,    0, 'x'},
 	{"help",   no_argument,       0, 'h'},
+	{"display-packet", no_argument,0, 'S'},
+
+	{"calender", no_argument,       0, 'd'},
+	{"localtime",no_argument,       0, 'D'},
+	{"absolute", no_argument,       0, 'a'},
+	{"relative", no_argument,       0, 'r'},
+	{"hexdump",  no_argument,       0, 'x'},
+	{"headers",  no_argument,       0, 'H'},
+
+	
 	{0, 0, 0, 0} /* sentinel */
 };
 
@@ -55,20 +71,49 @@ static void show_usage(void){
 	printf("(C) 2003 Anders Ekberg <anders.ekberg@bth.se>\n");
 	printf("(C) 2012 Vamsi Krishna Konakalla <xvk@bth.se>\n");
 	printf("(C) 2012 David Sveningsson <david.sveningsson@bth.se>\n\n");
+	printf("(C) 2021 Patrik Arlos <patrik.arlos@bth.se>\n\n");
 	printf("Usage: %s [OPTIONS] STREAM\n"
-	       "  -p, --pkts=INT       Number of pkts to show [default all]\n"
-	       "  -i, --iface=IFACE    Use ethernet interface IFACE\n"
-	       "  -f, --format=FORMAT  Set output FORMAT. Valid format is csv and default.\n"
-	       "  -c                   Short for --format=csv\n"
-	       "      --no-header      Don't write format header.\n"
-	       "      --no-offset      Don't use a time offset.\n"
-	       "  -h, --help           This text\n"
+	       "  -p, --pkts=INT         Number of pkts to show [default all]\n"
+	       "  -i, --iface=IFACE      Use ethernet interface IFACE\n"
+	       "  -f, --format=FORMAT    Set output FORMAT. Valid format is csv and default.\n"
+	       "  -c                     Short for --format=csv\n"
+	       "      --no-header        Don't write format header.\n"
+	       "      --no-offset        Don't use a time offset.\n"
+	       "  -d, --display-packet  Show packet information.\n"
+	       "  -h, --help             This text\n"
 	       "\n"
+	       "Formatting options:\n"
+	       "  -1                   Show only DPMI information.\n"
+	       "  -2                     .. include link layer.\n"
+	       "  -3                     .. include transport layer.\n"
+	       "  -4                     .. include application layer. [default]\n"
+	       "  -H, --headers        Show layer headers.\n"
+	       "  -x, --hexdump        Write full packet content as hexdump.\n"
+	       "  -d, --calender       Show timestamps in human-readable format (UTC).\n"
+	       "  -D, --localtime      Show timestamps in human-readable format (local time).\n"
+	       "  -a, --absolute       Show absolute timestamps.\n"
+	       "  -r, --relative       Show timestamps relative to first packet. [default]\n"
+	       
 	       "Recommended conserver usage:\n"
 	       "%s -c | conserver -j1 -n NAME\n"
 	       "\n", program_name, program_name);
 	filter_from_argv_usage();
 }
+
+
+struct tg_Protocol {
+  u_int32_t exp_id;// Experiment ID
+  u_int32_t run_id;// Run ID
+  u_int32_t key_id;// Key ID
+  u_int32_t counter;// Packet Counter
+  u_int64_t starttime;// Start of packet transmission time, comes with packet.counter+1
+  u_int64_t stoptime;// Stopt of packet transmission time,  comes with packet.counter+1
+  struct timeval depttime; // Departure time. 
+  u_int64_t recvstarttime; // Receive start and stop time, recorded at receiver.
+  u_int64_t recvstoptime; // Receive start and stop time, recorded at receiver.
+  struct timeval recvtime;// Receive time
+  // After this comes the payload. 
+};
 
 static void handle_sigint(int signum){
 	if ( keep_running == 0 ){
@@ -81,11 +126,12 @@ static void handle_sigint(int signum){
 }
 
 static void default_formatter(const timepico* time, const timepico* delta){
-	fprintf(stdout, "%d.%012"PRIu64" %d.%012"PRIu64"\n", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);
+	fprintf(stdout, "%d.%012"PRIu64" %d.%012"PRIu64" ", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);
 }
 
 static void csv_formatter(const timepico* time, const timepico* delta){
-	fprintf(stdout, "%d.%012"PRIu64";%d.%012"PRIu64"\n", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);
+	fprintf(stdout, "%d.%012"PRIu64";%d.%012"PRIu64";", time->tv_sec, time->tv_psec, delta->tv_sec, delta->tv_psec);	
+
 }
 
 int main (int argc, char **argv){
@@ -109,12 +155,44 @@ int main (int argc, char **argv){
 
 	/* Parse command line arguments (filter arguments has been consumed) */
 	int op, option_index;
-	while ( (op = getopt_long(argc, argv, "hi:p:c", long_options, &option_index)) != -1 ){
+	while ( (op = getopt_long(argc, argv, shortopts, long_options, &option_index)) != -1 ){
 		switch ( op ){
-		case 0:   /* long opt */
+		case 0:   /* long opt */       
 		case '?': /* unknown opt */
 			break;
 
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		{
+			const unsigned int mask = (7<<FORMAT_LAYER_BIT);
+			flags &= ~mask; /* reset all layer bits */
+			flags |= (op-'0')<<FORMAT_LAYER_BIT;
+			break;
+		}
+
+		case 'd': /* --calender */
+			flags |= FORMAT_DATE_STR | FORMAT_DATE_UTC;
+			break;
+
+		case 'D': /* --localtime */
+			flags |= FORMAT_DATE_STR | FORMAT_DATE_LOCALTIME;
+			break;
+
+		case 'a': /* --absolute */
+			flags &= ~FORMAT_REL_TIMESTAMP;
+			break;
+
+		case 'r': /* --relative */
+			flags |= FORMAT_REL_TIMESTAMP;
+			break;
+
+		case 'H': /* --headers */
+			flags |= FORMAT_HEADER;
+			break;
+
+			
 		case 'i': /* --iface */
 			iface = optarg;
 			break;
@@ -146,6 +224,9 @@ int main (int argc, char **argv){
 			nooffset = 1;
 			break;
 
+		case 'S': /* show packet */
+		        showpacket=1;
+			break;
 		case 'h':
 			show_usage();
 			return 0;
@@ -181,6 +262,10 @@ int main (int argc, char **argv){
 		fprintf(stderr, "%s: stream_read() failed: %s\n", program_name, caputils_error_string(ret));
 		return 1;
 	}
+
+	/* setup formatter */
+	struct format format;
+	format_setup(&format, flags);
 
 	timepico time_offset = {caphead->ts.tv_sec, 0};
 	timepico last = {0, caphead->ts.tv_psec};
@@ -230,6 +315,16 @@ int main (int argc, char **argv){
 		}
 
 		formatter(&cur, &delta);
+
+		if (showpacket){
+		  if ( filter_match(&filter, caphead->payload, caphead) ){
+		    format_pkg(stdout, &format, caphead);
+		  } else {
+		    format_ignore(stdout, &format, caphead);
+		  }
+		}
+		fprintf(stdout, "\n");
+		
 		last = cur;
 		memcpy(last_CI, caphead->nic, 8);
 
